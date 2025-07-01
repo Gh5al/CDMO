@@ -60,7 +60,11 @@ obj = max(tot_dist[..]);
 int: obj_lowerbound = max(i in items)(dist[n+1,i] + dist[i,n+1]);
 constraint obj >= obj_lowerbound;
 
-solve minimize obj;
-
+% Search Strategy LNS+RESTART
+solve :: int_search(succ, dom_w_deg, indomain_min) 
+      :: restart_luby(100)
+      :: relax_and_reconstruct(array1d(succ), 85)
+ minimize obj; 
+%solve minimize obj;
 output  [show(succ[k,i]) ++ if i == n+1 then "\n" else " " endif | k in couriers, i in locs] ++
         [show(obj) ++ "\n"]
