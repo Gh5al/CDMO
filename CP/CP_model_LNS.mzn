@@ -29,8 +29,7 @@ constraint forall(k in couriers)(
 
 %constraint each courier should enter and exit the depot only once
 constraint forall(k in couriers)(
-          count(s in succ[k,..])(s = n+1)== 1 
-          %/\ succ[k,n+1] != n+1 %implied constraint
+          count(s in succ[k,..])(s = n+1)== 1 /\ succ[k,n+1] != n+1 
     );
 % constraint each courier route should be an Hamiltonian sub-tour(prevent unconnected routes)
 constraint forall(k in couriers) (
