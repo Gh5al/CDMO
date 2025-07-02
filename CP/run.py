@@ -1,6 +1,7 @@
 
 import re
 import json
+import math
 import subprocess
 
 ##### CONFIGURATION #####
@@ -14,12 +15,12 @@ VARIANTS = {
         "mzn_file": "CP_model.mzn",
         "solver": "chuffed",
     },
-    "3d_gecode": {
-        "mzn_file": "cp_3d_variable_model.mzn",
+    "lns_gecode": {
+        "mzn_file": "CP_model_LNS.mzn",
         "solver": "gecode",
     },
-    "3d_chuffed": {
-        "mzn_file": "cp_3d_variable_model.mzn",
+    "lns_chuffed": {
+        "mzn_file": "CP_model_LNS.mzn",
         "solver": "chuffed",
     },
 }
@@ -58,28 +59,54 @@ def convert_minizinc_to_dict(input: str) -> dict:
     Returns:
         A dictionary containing the output in the expected format (see MINIZINC_OUT_SAMPLE_DICT for an example)
     """
-
+    
     # Extract the JSON part from the input string
     json_part = re.search(r'\{.*\}', input, re.DOTALL)
     if not json_part:
         raise ValueError("No JSON part found in the input string.")
-
+    
     # Parse the JSON part
     dict_in = json.loads(json_part.group(0))
+    solution_raw = dict_in.get('succ') or dict_in.get('u'),
+    try:
+        sol = []
+        # for idx_raw, successor in enumerate(solution_raw):
+        #     if successor != idx_raw+1:
+        #         if idx_raw+1 in sol:
+        #             idx = sol.index(idx_raw+1)
+        #             sol.insert(idx, successor)
+        #         else:
+        #             sol.append(successor)
+        for courier in solution_raw[0]:
+            sub_sol = []
+            n = len(courier)-1
+            m = max(courier)-1
+            prev = courier[n]
+            while prev != n:
+                for i in range(m):
+                    if i == prev:
+                        sub_sol.append(i+1)
+                        prev = courier[i]
+                        break
+            sol.append(sub_sol)
+        print(f"Solution: {solution_raw} -> {sol}")
+    except Exception as e:
+        print(f"Error processing solution:", e)
+        sol = solution_raw  # Fallback to raw solution if processing fails
+
     dict_out = {
-        'sol': dict_in.get('succ') or dict_in.get('u'),  # Assuming 'succ' contains the solution paths
+        'sol': sol,
         'obj': dict_in.get('_objective')  # Assuming '_objective' contains the objective value
     }
 
     # Extract time and objective value
     time_match = re.search(r'% time elapsed: (\d+\.\d+) s', input)
     if time_match:
-        dict_out['time'] = float(time_match.group(1))
+        dict_out['time'] = math.floor(float(time_match.group(1)))
     else:
         raise ValueError("Time elapsed not found in the input string.")
 
     dict_out['optimal'] = dict_out.get("time") < 300
-
     return dict_out
 
 def run_single_model(mzn_file:str,
