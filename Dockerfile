@@ -13,4 +13,4 @@ COPY CP /app/CP
 COPY SMT /app/SMT
 COPY MIP /app/MIP
 
-CMD [ "/venv/bin/python", "/app/CP/run.py" ]
+ENTRYPOINT [ "/venv/bin/python", "/app/run.py" ]

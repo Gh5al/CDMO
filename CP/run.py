@@ -3,24 +3,27 @@ import re
 import json
 import math
 import subprocess
+from sys import argv
+from os import path
 
 ##### CONFIGURATION #####
 
+BASE_PATH = path.dirname(__file__)
 VARIANTS = {
     "gecode": {
-        "mzn_file": "CP_model.mzn",
+        "mzn_file": BASE_PATH+"/CP_model.mzn",
         "solver": "gecode",
     },
     "chuffed": {
-        "mzn_file": "CP_model.mzn",
+        "mzn_file": BASE_PATH+"/CP_model.mzn",
         "solver": "chuffed",
     },
     "lns_gecode": {
-        "mzn_file": "CP_model_LNS.mzn",
+        "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
         "solver": "gecode",
     },
     "lns_chuffed": {
-        "mzn_file": "CP_model_LNS.mzn",
+        "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
         "solver": "chuffed",
     },
 }
@@ -69,26 +72,23 @@ def convert_minizinc_to_dict(input: str) -> dict:
     dict_in = json.loads(json_part.group(0))
     solution_raw = dict_in.get('succ') or dict_in.get('u'),
     try:
+        #m = len(solution_raw[0])
+        n = len(solution_raw[0][0])-1
+        #print(m, n)
         sol = []
-        # for idx_raw, successor in enumerate(solution_raw):
-        #     if successor != idx_raw+1:
-        #         if idx_raw+1 in sol:
-        #             idx = sol.index(idx_raw+1)
-        #             sol.insert(idx, successor)
-        #         else:
-        #             sol.append(successor)
+        #items = list(range(n))
+        # extract solution for successor approach
         for courier in solution_raw[0]:
             sub_sol = []
-            n = len(courier)-1
-            m = max(courier)-1
             prev = courier[n]
-            while prev != n:
-                for i in range(m):
-                    if i == prev:
-                        sub_sol.append(i+1)
+            while (prev != n+1):
+                for i in range(n):
+                    if i+1 == prev:
+                        sub_sol.append(i + 1)
                         prev = courier[i]
                         break
             sol.append(sub_sol)
+
         print(f"Solution: {solution_raw} -> {sol}")
     except Exception as e:
         print(f"Error processing solution:", e)
@@ -147,7 +147,7 @@ def run_single_model(mzn_file:str,
 
     return result.stdout
 
-def run_all_models(variants: dict, dzn_file:str, minizinc_path: str = "minizinc") -> dict:
+def run_all_models(variants: dict, dzn_file:str, minizinc_path: str) -> dict:
     """
     Execute all models defined in the variants dictionary and return their outputs.
     
@@ -188,12 +188,21 @@ def save_to_file(out_dict: dict, file_path: str):
         json.dump(out_dict, f, indent=2)
     print(f"Results saved to {file_path}")
 
+def check_executable(executable: str):
+    try:
+        subprocess.run([executable, '--version'])
+    except Exception as e:
+        raise RuntimeError(f"Executable '{executable}' not found") from e;
+
+def run_and_save(variants: dict, minizinc_path: str, dzn_file:str):
+    check_executable(minizinc_path)
+    out = run_all_models(variants, dzn_file, minizinc_path)
+    #print("Execution completed. Results:\n", out)
+    save_to_file(out, dzn_file + ".json")
+
 ##### EXECUTION #####
 
-out = run_all_models(
-    VARIANTS,
-    "D:\\git\\CDMO\\CP\\minizinc_instances\\inst01.dzn",
-    "D:\\Program Files\\MiniZinc\\minizinc.exe"
-)
-print("Execution completed. Results:\n", out)
-save_to_file(out, "D:\\git\\CDMO\\CP\\results.json")
+if __name__ == '__main__':
+    MINIZINC_EXECUTABLE = argv[1] if len(argv) > 1 else 'minizinc'
+    DATA_FILE = argv[2] if len(argv) > 2 else BASE_PATH+"/minizinc_instances/inst01.dzn"
+    run_and_save(VARIANTS, MINIZINC_EXECUTABLE, DATA_FILE)
