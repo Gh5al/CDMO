@@ -56,8 +56,14 @@ constraint forall(k in couriers)(
 obj = max(tot_dist[..]);
 
 %define the lowerbound of the objective as the biggest distance to deliver an item from depot and return to depot
-int: obj_lowerbound = max(i in items)(dist[n+1,i] + dist[i,n+1]);
-constraint obj >= obj_lowerbound;
+int: lower_bound = max(i in items)(dist[n+1,i] + dist[i,n+1]);
+constraint obj >= lower_bound;
+
+%uppebound: m–1 couriers each deliver one item, the remaining courier delivers the n–m+1 items. 
+%Worst case: take the n–m+1 items with the largest distances
+array[items] of int: sorted_item_dist = sort([dist[n+1, i] + dist[i, n+1] | i in items]); 
+int: upper_bound = sum(i in n-m+1..n)(sorted_item_dist[i]);
+constraint obj <= upper_bound;
 
 solve minimize obj;
 

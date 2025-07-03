@@ -58,11 +58,16 @@ obj = max(tot_dist[..]);
 %define the lowerbound of the objective as the biggest distance to deliver an item from depot and return to depot
 int: obj_lowerbound = max(i in items)(dist[n+1,i] + dist[i,n+1]);
 constraint obj >= obj_lowerbound;
+%uppebound: %m–1 couriers each deliver one item, the remaining courier delivers the n–m+1 items.
+%Worst case: take the n–m+1 items with the largest distances
+array[items] of int: sorted_item_dist = sort([dist[n+1, i] + dist[i, n+1] | i in items]); 
+int: upper_bound = sum(i in n-m+1..n)(sorted_item_dist[i]);
+constraint obj <= upper_bound;
 
-% Search Strategy LNS+RESTART
-solve :: int_search(succ, dom_w_deg, indomain_min) 
-      :: restart_luby(100)
-      :: relax_and_reconstruct(array1d(succ), 85)
+% Search Strategy Luby+LNS, indomain_median
+solve :: int_search(succ, dom_w_deg, indomain_median) 
+      :: restart_luby(70)
+      :: relax_and_reconstruct(array1d(succ), 70)
  minimize obj; 
 %solve minimize obj;
 output  [show(succ[k,i]) ++ if i == n+1 then "\n" else " " endif | k in couriers, i in locs] ++
