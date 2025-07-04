@@ -1,6 +1,4 @@
-pyomo[optional]
+pyomo
 z3-solver
 numpy
 highspy
-coinor-cbc
-glpk-utils
