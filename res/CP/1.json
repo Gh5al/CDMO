@@ -13,7 +13,7 @@
       ]
     ],
     "obj": 14,
-    "time": 3,
+    "time": 0,
     "optimal": true
   },
   "chuffed": {
@@ -30,24 +30,24 @@
       ]
     ],
     "obj": 14,
-    "time": 1,
+    "time": 0,
     "optimal": true
   },
   "lns_gecode": {
     "sol": [
       [
-        6,
-        4,
-        2,
-        1
+        1,
+        3,
+        4
       ],
       [
+        2,
         5,
-        3
+        6
       ]
     ],
-    "obj": 16,
-    "time": 301,
+    "obj": 14,
+    "time": 300,
     "optimal": false
   },
   "lns_chuffed": {

@@ -161,7 +161,7 @@ def run_all_models(variants: dict, dzn_file:str, minizinc_path: str) -> dict:
     """
     results = {}
     for name, config in variants.items():
-        print(f"Running '{name}'")
+        print(f"Running '{name}' on '{dzn_file}'")
         try:
             output = run_single_model(
                 mzn_file=config['mzn_file'],
@@ -194,11 +194,14 @@ def check_executable(executable: str):
     except Exception as e:
         raise RuntimeError(f"Executable '{executable}' not found") from e;
 
-def run_and_save(variants: dict, minizinc_path: str, dzn_file:str):
+def run_and_save(data_instance_number:int, minizinc_path: str):
     check_executable(minizinc_path)
-    out = run_all_models(variants, dzn_file, minizinc_path)
+    dzn_file = BASE_PATH + f"/minizinc_instances/inst{'{:0>2}'.format(data_instance_number)}.dzn"
+    out = run_all_models(VARIANTS, dzn_file, minizinc_path)
     #print("Execution completed. Results:\n", out)
-    save_to_file(out, dzn_file + ".json")
+    result_file = BASE_PATH + f"/../res/CP/{data_instance_number}.json"
+    print(f"Saving results to {result_file}")
+    save_to_file(out, result_file)
 
 ##### EXECUTION #####
 
