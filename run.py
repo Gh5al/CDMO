@@ -1,25 +1,43 @@
-from CP.run import run_and_save
+from CP.CP import run_cp_and_save
+from SMT.SMT import run_smt_and_save
+from MIP.MIP import run_mip_and_save
 from sys import argv
+from os import path
 #import argparse
 
 # parser = argparse.ArgumentParser(
 #                     prog='CDMO',
-#                     description='What the program does',
-#                     epilog='Text at the bottom of help')
+#                     description='CDMO MCP solver')
+
+BASE_PATH = path.dirname(__file__)
 
 TYPE = argv[1] if len(argv) > 1 else 'CP'
 DATA_INSTANCE_NUMBER = argv[2] if len(argv) > 2 else "all"
 MINIZINC_EXECUTABLE = argv[3] if len(argv) > 3 else 'minizinc'
 
-if TYPE.lower() == 'cp':
-    if DATA_INSTANCE_NUMBER == "all":
-        for i in range(1, 22):
-            run_and_save(i, MINIZINC_EXECUTABLE)
+def run_instance(instance_number:int):
+    if TYPE.lower() == 'cp':
+        run_cp_and_save(
+            instance_number,
+            MINIZINC_EXECUTABLE,
+            f"{BASE_PATH}/res/CP/{instance_number}.json"
+        )
+    elif TYPE.lower() == 'smt':
+        run_smt_and_save(
+            instance_number,
+            f"{BASE_PATH}/res/SMT/{instance_number}.json"
+        )
+    elif TYPE.lower() == 'mip':
+        run_mip_and_save(
+            instance_number,
+            f"{BASE_PATH}/res/MIP/{instance_number}.json"
+        )
     else:
-        run_and_save(int(DATA_INSTANCE_NUMBER), MINIZINC_EXECUTABLE)
-elif TYPE.lower() == 'smt':
-    print("TODO SMT")
-elif TYPE.lower() == 'mip':
-    print("TODO MIP")
+        raise ValueError(f"Unknown type: {TYPE}. Expected 'CP', 'SMT', or 'MIP'.")
+
+if DATA_INSTANCE_NUMBER == "all":
+    for i in range(1, 22):
+        run_instance(i)
 else:
-    raise ValueError(f"Unknown type: {TYPE}. Expected 'CP', 'SMT', or 'MIP'.")
+    run_instance(int(DATA_INSTANCE_NUMBER))
+    

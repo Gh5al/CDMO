@@ -194,18 +194,17 @@ def check_executable(executable: str):
     except Exception as e:
         raise RuntimeError(f"Executable '{executable}' not found") from e;
 
-def run_and_save(data_instance_number:int, minizinc_path: str):
+def run_cp_and_save(data_instance_number:int, minizinc_path: str, result_file: str):
     check_executable(minizinc_path)
     dzn_file = BASE_PATH + f"/minizinc_instances/inst{'{:0>2}'.format(data_instance_number)}.dzn"
     out = run_all_models(VARIANTS, dzn_file, minizinc_path)
     #print("Execution completed. Results:\n", out)
-    result_file = BASE_PATH + f"/../res/CP/{data_instance_number}.json"
-    print(f"Saving results to {result_file}")
     save_to_file(out, result_file)
 
 ##### EXECUTION #####
 
 if __name__ == '__main__':
-    MINIZINC_EXECUTABLE = argv[1] if len(argv) > 1 else 'minizinc'
-    DATA_FILE = argv[2] if len(argv) > 2 else BASE_PATH+"/minizinc_instances/inst01.dzn"
-    run_and_save(VARIANTS, MINIZINC_EXECUTABLE, DATA_FILE)
+    DATA_INSTANCE_NUMBER = argv[1] if len(argv) > 1 else 1
+    MINIZINC_EXECUTABLE = argv[2] if len(argv) > 2 else 'minizinc'
+    result_file = BASE_PATH + f"/../res/CP/{DATA_INSTANCE_NUMBER}.json"
+    run_cp_and_save(int(DATA_INSTANCE_NUMBER), MINIZINC_EXECUTABLE, result_file)
