@@ -1,5 +1,5 @@
 #FROM python:3.13-bookworm
-FROM minizinc/minizinc:2.9.3
+FROM minizinc/minizinc:2.9.3-noble
 
 RUN apt update && \
     apt install -y python3-pip python3-venv coinor-cbc glpk-utils && \
