@@ -22,10 +22,10 @@ VARIANTS = {
         "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
         "solver": "gecode",
     },
-    "lns_chuffed": {
-        "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
-        "solver": "chuffed",
-    },
+    # "lns_chuffed": {
+    #     "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
+    #     "solver": "chuffed",
+    # },
 }
 
 ##### SAMPLE DATA #####

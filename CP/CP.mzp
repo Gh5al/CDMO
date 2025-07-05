@@ -1,0 +1,35 @@
+{
+    "openFiles": [
+        "CP_model.mzn",
+        "CP_model_LNS.mzn",
+        "minizinc_instances/inst01.dzn"
+    ],
+    "openTab": 1,
+    "projectFiles": [
+        "CP_model.mzn",
+        "CP_model_LNS.mzn",
+        "minizinc_instances/inst01.dzn",
+        "minizinc_instances/inst02.dzn",
+        "minizinc_instances/inst03.dzn",
+        "minizinc_instances/inst04.dzn",
+        "minizinc_instances/inst05.dzn",
+        "minizinc_instances/inst06.dzn",
+        "minizinc_instances/inst07.dzn",
+        "minizinc_instances/inst08.dzn",
+        "minizinc_instances/inst09.dzn",
+        "minizinc_instances/inst10.dzn",
+        "minizinc_instances/inst11.dzn",
+        "minizinc_instances/inst12.dzn",
+        "minizinc_instances/inst13.dzn",
+        "minizinc_instances/inst14.dzn",
+        "minizinc_instances/inst15.dzn",
+        "minizinc_instances/inst16.dzn",
+        "minizinc_instances/inst17.dzn",
+        "minizinc_instances/inst18.dzn",
+        "minizinc_instances/inst19.dzn",
+        "minizinc_instances/inst20.dzn"
+    ],
+    "selectedBuiltinConfigId": "org.chuffed.chuffed",
+    "selectedBuiltinConfigVersion": "0.13.2",
+    "version": 106
+}

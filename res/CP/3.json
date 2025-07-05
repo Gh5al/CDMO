@@ -58,25 +58,5 @@
     "obj": 18,
     "time": 300,
     "optimal": false
-  },
-  "lns_chuffed": {
-    "sol": [
-      [
-        5,
-        4,
-        2
-      ],
-      [
-        3,
-        6
-      ],
-      [
-        1,
-        7
-      ]
-    ],
-    "obj": 12,
-    "time": 0,
-    "optimal": true
   }
 }

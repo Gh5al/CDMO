@@ -1,0 +1,8 @@
+services:
+  cdmo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ghcr.io/gh5al/cdmo
+    volumes:
+      - ./res:/app/res:delegated

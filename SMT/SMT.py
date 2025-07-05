@@ -37,12 +37,13 @@ def read_data(filename):
 
 
 def sol_to_dict(t:int, obj:str, sol:list):
-  if t<300:
-    optimal = "true"
+  if t<300 and obj != "-1":
+    optimal = True
     time = math.floor(t)
   else:
-    optimal = "false"
+    optimal = False
     time = 300
+
   # Create JSON structure
   return {
         "time": time,
