@@ -31,8 +31,11 @@ def read_data(filename):
   return m,n,capacity,size,dist
 
 def sol_to_dict(t:int, obj:str, sol:list):
-  if t<300 and obj != "-1":
+  if t<300 and obj != -1:
     optimal = True
+    time = math.floor(t)
+  elif obj == -1:
+    optimal = False
     time = math.floor(t)
   else:
     optimal = False

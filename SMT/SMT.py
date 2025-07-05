@@ -37,8 +37,11 @@ def read_data(filename):
 
 
 def sol_to_dict(t:int, obj:str, sol:list):
-  if t<300 and obj != "-1":
+  if t<300 and obj != -1:
     optimal = True
+    time = math.floor(t)
+  elif obj == -1:
+    optimal = False
     time = math.floor(t)
   else:
     optimal = False
@@ -204,12 +207,12 @@ def run_boolean_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
-    return 0,-1,[]
+    return time.time() - search_start_time, -1, []
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
-    #print(f"current_obj_value: {curr_obj}\n")
+    print(f"current_obj_value: {curr_obj}\n")
     #routes = extract_routes(model,m,n,d_var,succ=succ)
     if curr_obj <= lower_bound:
       break
@@ -341,7 +344,7 @@ def run_int_assign_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
-    return 0,-1,[]
+    return time.time() - search_start_time, -1, []
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     model = solver.model()
