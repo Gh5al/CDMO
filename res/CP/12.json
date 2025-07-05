@@ -141,6 +141,12 @@
     "time": 300,
     "optimal": false
   },
+  "chuffed": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
   "gecode_search": {
     "sol": [
       [
@@ -280,7 +286,7 @@
       ]
     ],
     "obj": 346,
-    "time": 13,
+    "time": 12,
     "optimal": true
   }
 }
