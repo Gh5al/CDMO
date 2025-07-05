@@ -1,39 +1,8 @@
 {
-  "gecode": {
-    "sol": [
-      [
-        4,
-        3,
-        1
-      ],
-      [
-        2,
-        5,
-        6
-      ]
-    ],
-    "obj": 14,
+  "glpk": {
     "time": 0,
-    "optimal": true
-  },
-  "chuffed": {
-    "sol": [
-      [
-        4,
-        3,
-        1
-      ],
-      [
-        2,
-        5,
-        6
-      ]
-    ],
+    "optimal": true,
     "obj": 14,
-    "time": 0,
-    "optimal": true
-  },
-  "gecode_search": {
     "sol": [
       [
         1,
@@ -45,9 +14,40 @@
         5,
         6
       ]
-    ],
+    ]
+  },
+  "cbc": {
+    "time": 1,
+    "optimal": true,
     "obj": 14,
-    "time": 300,
-    "optimal": false
+    "sol": [
+      [
+        4,
+        3,
+        1
+      ],
+      [
+        2,
+        5,
+        6
+      ]
+    ]
+  },
+  "highs": {
+    "time": 0,
+    "optimal": true,
+    "obj": 14,
+    "sol": [
+      [
+        4,
+        3,
+        1
+      ],
+      [
+        2,
+        5,
+        6
+      ]
+    ]
   }
 }

@@ -26,19 +26,5 @@
     "obj": 206,
     "time": 0,
     "optimal": true
-  },
-  "lns_gecode": {
-    "sol": [
-      [
-        2
-      ],
-      [
-        1,
-        3
-      ]
-    ],
-    "obj": 206,
-    "time": 0,
-    "optimal": true
   }
 }

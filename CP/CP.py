@@ -18,8 +18,8 @@ VARIANTS = {
         "mzn_file": BASE_PATH+"/CP_model.mzn",
         "solver": "chuffed",
     },
-    "lns_gecode": {
-        "mzn_file": BASE_PATH+"/CP_model_LNS.mzn",
+    "gecode_search": {
+        "mzn_file": BASE_PATH+"/CP_model_search.mzn",
         "solver": "gecode",
     },
     # "lns_chuffed": {

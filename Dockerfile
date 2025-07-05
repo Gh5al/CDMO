@@ -7,12 +7,13 @@ RUN apt update && \
 # Since python installed by apt is externally managed we must create a virtual environment
 RUN python3 -m venv /venv
 WORKDIR /app
-COPY requirements.txt /app/
-RUN /venv/bin/pip install -r /app/requirements.txt
+COPY requirements.txt run.sh /app/
+RUN /venv/bin/pip install -r /app/requirements.txt && \
+    chmod +x /app/run.sh
 COPY Instances /app/Instances
 COPY run.py /app/
 COPY CP /app/CP
 COPY SMT /app/SMT
 COPY MIP /app/MIP
 
-CMD [ "/venv/bin/python", "/app/run.py" ]
+CMD [ "/app/run.sh" ]
