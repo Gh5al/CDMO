@@ -65,11 +65,11 @@ constraint obj <= upper_bound;
 
 %SEARCHING
 %Search strategy Luby+LNS, with indomain_median
-%solve :: int_search(succ, dom_w_deg, indomain_median) 
-%      :: restart_luby(70)
-%      :: relax_and_reconstruct(array1d(succ), 70)
-%      minimize obj; 
-solve minimize obj;
+solve :: int_search(succ, dom_w_deg, indomain_median) 
+      :: restart_luby(70)
+      :: relax_and_reconstruct(array1d(succ), 70)
+      minimize obj; 
+%solve minimize obj;
 
 output  [show(succ[k,i]) ++ if i == n+1 then "\n" else " " endif | k in couriers, i in locs] ++
         [show(obj) ++ "\n"]
