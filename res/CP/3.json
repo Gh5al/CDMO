@@ -38,5 +38,25 @@
     "obj": 12,
     "time": 0,
     "optimal": true
+  },
+  "gecode_search": {
+    "sol": [
+      [
+        1,
+        4,
+        6
+      ],
+      [
+        7,
+        3
+      ],
+      [
+        2,
+        5
+      ]
+    ],
+    "obj": 18,
+    "time": 300,
+    "optimal": false
   }
 }

@@ -54,19 +54,26 @@ MINIZINC_OUT_SAMPLE_DICT =  {
 
 ##### UTILITY FUNCTIONS #####
 
-def convert_minizinc_to_dict(input: str) -> dict:
+def convert_minizinc_to_dict(minizinc_output: str) -> dict:
     """
     Convert the output of the MiniZinc solver to a JSON format.
     Args:
-        input (str): The output of the MiniZinc solver (see MINIZINC_OUT_SAMPLE_RAW for an example)
+        minizinc_output (str): The output of the MiniZinc solver (see MINIZINC_OUT_SAMPLE_RAW for an example)
     Returns:
         A dictionary containing the output in the expected format (see MINIZINC_OUT_SAMPLE_DICT for an example)
     """
-    
-    # Extract the JSON part from the input string
-    json_part = re.search(r'\{.*\}', input, re.DOTALL)
-    if not json_part:
-        raise ValueError("No JSON part found in the input string.")
+
+    # Extract the JSON part from the minizinc_output string
+    json_part = re.search(r'\{.*\}', minizinc_output, re.DOTALL)
+    if not json_part and "=====UNKNOWN=====" in minizinc_output:
+        return {
+            "time": 300,
+            "optimal": False,
+            "obj": -1,
+            "sol": []
+        }
+    elif not json_part:
+        raise ValueError("No JSON part found in minizinc_output:\n", minizinc_output)
     
     # Parse the JSON part
     dict_in = json.loads(json_part.group(0))
@@ -100,11 +107,11 @@ def convert_minizinc_to_dict(input: str) -> dict:
     }
 
     # Extract time and objective value
-    time_match = re.search(r'% time elapsed: (\d+\.\d+) s', input)
+    time_match = re.search(r'% time elapsed: (\d+\.\d+) s', minizinc_output)
     if time_match:
-        dict_out['time'] = math.floor(float(time_match.group(1)))
+        dict_out['time'] = min(300, math.floor(float(time_match.group(1))))
     else:
-        raise ValueError("Time elapsed not found in the input string.")
+        raise ValueError("Time elapsed not found in minizinc_output.")
 
     dict_out['optimal'] = dict_out.get("time") < 300
     return dict_out
