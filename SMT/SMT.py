@@ -3,10 +3,12 @@
 
 # %% [markdown]
 # We tried 3 methods:
-# - successor approach with position variable
+# 
 # - boolean assignment variable + postion variable,
-# - int assign variable (assign a courier to each item) + position variable .<br>
-# The best approach is to use successor variable + position variable.<br>
+# - int assign variable (assign a courier to each item) + position variable
+# - successor approach with position variable (not working with some instances)
+# .<br>
+# 
 # For all the approaches it's fundamentel to use the lower bound constraint as it helps to reduce the search space significantly and provide a solution to instances.
 
 # %%
@@ -127,7 +129,7 @@ def run_boolean_model(filename):
   #objective function: minimize the maximum distance travelled by any courier
   objective = Int("objective")
 
-  #--------------------------------- CONSTRAINTS ---------------------------------
+#--------------------------------- CONSTRAINTS ---------------------------------
 
   #each item should be delivered by one courier
   for i in items:
@@ -201,8 +203,8 @@ def run_boolean_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
-  #For some instances the solver doesn't abort the searching process even after
-  #timeout, maybe due to the fact it's exploring the search tree
+    return 0,-1,[]
+  #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
@@ -211,6 +213,9 @@ def run_boolean_model(filename):
     if curr_obj <= lower_bound:
       break
     if time.time() - search_start_time >= 300:
+      break
+    if solver.check() != sat:
+      print('Failed to solve')
       break
     #try to improve the objective adding an upperbound with the current objective
     solver.add(objective < curr_obj)
@@ -263,7 +268,7 @@ def run_int_assign_model(filename):
   #objective function: minimize the maximum distance travelled by any courier
   objective = Int("objective")
 
-  #--------------------------------- CONSTRAINTS ---------------------------------
+#--------------------------------- CONSTRAINTS ---------------------------------
 
   #each item should be delivered by a courier, bound the assign variable
   for i in items:
@@ -335,6 +340,7 @@ def run_int_assign_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
+    return 0,-1,[]
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     model = solver.model()
@@ -344,6 +350,9 @@ def run_int_assign_model(filename):
     if curr_obj <= lower_bound:
       break
     if time.time() - search_start_time >= 300:
+      break
+    if solver.check() != sat:
+      print('Failed to solve')
       break
     #try to improve the objective adding an upperbound with the current objective
     solver.add(objective < curr_obj)
