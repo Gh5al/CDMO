@@ -1,7 +1,7 @@
 {
   "boolean": {
     "time": 0,
-    "optimal": "true",
+    "optimal": true,
     "obj": 14,
     "sol": [
       [
@@ -18,7 +18,7 @@
   },
   "assign_int": {
     "time": 0,
-    "optimal": "true",
+    "optimal": true,
     "obj": 14,
     "sol": [
       [
