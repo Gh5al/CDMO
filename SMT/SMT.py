@@ -12,7 +12,7 @@
 # For all the approaches it's fundamentel to use the lower bound constraint as it helps to reduce the search space significantly and provide a solution to instances.
 
 # %%
-from z3 import Solver, sat, Int, Bool, Sum, If, And, Not, Distinct, Implies
+from z3 import Solver, sat, Int, Bool, Sum, If, Or, And, Not, Distinct, Implies
 import numpy as np
 import time
 #from multiprocessing import Process, Queue
@@ -36,19 +36,17 @@ def read_data(filename):
 
 
 
-def sol_to_dict(t:int, obj:str, sol:list):
-  if t<300 and obj != -1:
+def sol_to_dict(t:int, obj:str, sol:list, solved:bool):
+  if t<300 and obj != -1 and solved:
     optimal = True
     time = math.floor(t)
-  elif obj == -1:
-    optimal = False
-    if t >= 300:
-      time = 300
-    else:
-      time = math.floor(t)
-  else:
+  elif t >= 300:
+    print("Time limit reached:", t)
     optimal = False
     time = 300
+  else:
+    optimal = False
+    time = math.floor(t)
 
   # Create JSON structure
   return {
@@ -130,6 +128,9 @@ def run_boolean_model(filename):
   # pos[k][i]: order index of node i in the route of courier k
   pos = [[Int(f"pos_{k}_{i}") for i in items] for k in couriers]
 
+  #number of assigned items to each courier
+  num_assigned = [Int(f"num_assigned_{k}") for k in couriers]
+
   # distance[k]: total distance of courier k
   distance = [Int(f"distance_{k}") for k in couriers]
 
@@ -144,7 +145,7 @@ def run_boolean_model(filename):
 
   #each courier should deliver at least one item
   for k in couriers:
-    solver.add(Sum([If(A[k][i],1,0) for i in items]) >= 1)
+    solver.add(Or([A[k][i] for i in items]))
 
   #capacity constraints
   for k in couriers:
@@ -154,31 +155,37 @@ def run_boolean_model(filename):
   for k in couriers:
     solver.add(Distinct([pos[k][i] for i in items]))
 
-  #prevent unconnected routes between delivered items by a courier k
   for k in couriers:
-    #num_assigned items to each courier
-    num_assigned = Sum([If(A[k][i],1,0) for i in items])
-    for i in range(n):
+    num_assigned[k] = Sum([If(A[k][i],1,0) for i in items])
+
+    #prevent unconnected routes between delivered items by a courier k
+    for i in items:
       #if an item is assigned to a courier k, then the position should have a value between 1 and num_assigned items to the courier k
-      solver.add(Implies(A[k][i],And(pos[k][i]>=1,pos[k][i]<=num_assigned)))
+      solver.add(Implies(A[k][i],And(pos[k][i]>=1,pos[k][i]<=num_assigned[k])))
       solver.add(Implies(Not(A[k][i]),pos[k][i]<0))
 
-  #Distance calculation
-  for k in couriers:
-    #num_assigned items to each courier
-    num_assigned = Sum([If(A[k][i],1,0) for i in items])
-
+    #Distance calculation
     #distance from depot to the first delivery
     depot_to_first= Sum([If(And(A[k][i], pos[k][i] == 1),dist[n][i],0) for i in items])
 
     #create 2 for with i,j, if an item i and j are delivered, and their position only differs of 1, take all the pairs and then sum all the distances
-    betweem_distance = Sum([Sum([ If(And(A[k][i],A[k][j],pos[k][j] == pos[k][i]+1),dist[i][j],0) for j in items if j!=i]) for i in items])
+    between_distance = Sum(
+      [If(
+        A[k][i],
+        Sum([
+          If(And(A[k][j],pos[k][j] == pos[k][i]+1), dist[i][j], 0)
+          for j in items
+          if j!=i
+        ]),
+        0
+      ) for i in items]
+    )
 
     #distance from last delivery to depot
-    last_to_depot = Sum([If(And(A[k][i], pos[k][i] == num_assigned),dist[i][n],0) for i in items])
+    last_to_depot = Sum([If(And(A[k][i], pos[k][i] == num_assigned[k]),dist[i][n],0) for i in items])
 
     #total distance
-    solver.add(distance[k] == depot_to_first + betweem_distance + last_to_depot)
+    solver.add(distance[k] == depot_to_first + between_distance + last_to_depot)
 
   #constraint the obj to be the biggest distance travelled by any courier
   for k in couriers:
@@ -200,9 +207,6 @@ def run_boolean_model(filename):
 
   encoding_time = time.time() - start_time
   print(f"encoding_time: {encoding_time:3.2f} secs\n")
-  # Set timeout to 5 minutes(300 secs)(include also the encoding time as for large instances it can be remarkable?)
-  timeout = 300
-  solver.set("timeout", int(timeout*1000))
   search_start_time = time.time()
 
   #--------------------------------- SEARCHING ---------------------------------
@@ -210,20 +214,27 @@ def run_boolean_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
-    return time.time() - search_start_time, -1, []
+    return time.time() - search_start_time, -1, [], False
+  
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
+    timeoutS = search_start_time + 5*60 - time.time()
+    print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
+    solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
-    print(f"current_obj_value: {curr_obj}\n")
     #routes = extract_routes(model,m,n,d_var,succ=succ)
     if curr_obj <= lower_bound:
       break
-    if time.time() - search_start_time >= 300:
+    if time.time() - search_start_time >= 5*60:
+      solved = False
+      print('Timeout reached')
       break
     if solver.check() != sat:
+      solved = False
       print('Failed to solve')
       break
+    solved = True
     #try to improve the objective adding an upperbound with the current objective
     solver.add(objective < curr_obj)
   #--------------------------------- BUILD_SOL ---------------------------------
@@ -244,7 +255,7 @@ def run_boolean_model(filename):
   searching_time = time.time() - search_start_time
   final_time = searching_time
   print(f"Finished in: {final_time:3.2f} secs\n")
-  return final_time,curr_obj, sol
+  return final_time,curr_obj, sol, solved
 
 
 # %% [markdown]
@@ -336,9 +347,6 @@ def run_int_assign_model(filename):
 
   encoding_time = time.time() - start_time
   print(f"encoding_time: {encoding_time:3.2f} secs\n")
-  # Set timeout to 5 minutes(300 secs)(include also the encoding time as for large instances it can be remarkable)
-  timeout = 300
-  solver.set("timeout", int(timeout*1000))
   search_start_time = time.time()
 
   #--------------------------------- SEARCHING ---------------------------------
@@ -347,20 +355,27 @@ def run_int_assign_model(filename):
   # Try to get intermediate results
   if solver.check() != sat:
     print('Failed to solve')
-    return time.time() - search_start_time, -1, []
+    return time.time() - search_start_time, -1, [], False
+  
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
+    timeoutS = search_start_time + 5*60 - time.time()
+    print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
+    solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
-    print(f"current_obj_value: {curr_obj}\n")
     #routes = extract_routes(model,m,n,d_var,succ=succ)
     if curr_obj <= lower_bound:
       break
-    if time.time() - search_start_time >= 300:
+    if time.time() - search_start_time >= 5*60:
+      solved = False
+      print('Timeout reached')
       break
     if solver.check() != sat:
+      solved = False
       print('Failed to solve')
       break
+    solved = True
     #try to improve the objective adding an upperbound with the current objective
     solver.add(objective < curr_obj)
   #--------------------------------- BUILD_SOL ---------------------------------
@@ -380,7 +395,7 @@ def run_int_assign_model(filename):
   searching_time = time.time() - search_start_time
   final_time = searching_time
   print(f"Finished in: {final_time:3.2f} secs\n")
-  return final_time,curr_obj, sol
+  return final_time,curr_obj, sol, solved
 
 # %% [markdown]
 # # RUN MODEL
@@ -404,12 +419,12 @@ def run_smt_and_save(data_instance_number:int, result_file: str):
   out = {}
 
   print("Running boolean variable model...")
-  t, obj, sol = run_boolean_model(dat_file)
-  out["boolean"] = sol_to_dict(t, obj, sol)
+  t, obj, sol, solved = run_boolean_model(dat_file)
+  out["boolean"] = sol_to_dict(t, obj, sol, solved)
 
   print("Running assign int variable model...")
-  t, obj, sol = run_int_assign_model(dat_file)
-  out["assign_int"] = sol_to_dict(t, obj, sol)
+  t, obj, sol, solved = run_int_assign_model(dat_file)
+  out["assign_int"] = sol_to_dict(t, obj, sol, solved)
 
   save_to_file(out, result_file)
 
