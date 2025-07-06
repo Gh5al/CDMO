@@ -156,19 +156,20 @@ def run_boolean_model(filename):
     solver.add(Distinct([pos[k][i] for i in items]))
 
   for k in couriers:
-    num_assigned[k] = Sum([If(A[k][i],1,0) for i in items])
+    solver.add(num_assigned[k] == Sum([If(A[k][i],1,0) for i in items]))
 
     #prevent unconnected routes between delivered items by a courier k
     for i in items:
       #if an item is assigned to a courier k, then the position should have a value between 1 and num_assigned items to the courier k
-      solver.add(Implies(A[k][i],And(pos[k][i]>=1,pos[k][i]<=num_assigned[k])))
-      solver.add(Implies(Not(A[k][i]),pos[k][i]<0))
+      solver.add(A[k][i] == (pos[k][i] >= 1))
+      solver.add(pos[k][i] <= num_assigned[k])
+      solver.add(Not(A[k][i]) == (pos[k][i] == -i))
 
     #Distance calculation
     #distance from depot to the first delivery
     depot_to_first= Sum([If(And(A[k][i], pos[k][i] == 1),dist[n][i],0) for i in items])
 
-    #create 2 for with i,j, if an item i and j are delivered, and their position only differs of 1, take all the pairs and then sum all the distances
+    # if an item i and j are delivered, and their position only differs of 1, take all the pairs and then sum all the distances
     between_distance = Sum(
       [If(
         A[k][i],
@@ -211,20 +212,22 @@ def run_boolean_model(filename):
 
   #--------------------------------- SEARCHING ---------------------------------
   curr_obj = -1
-  # Try to get intermediate results
-  if solver.check() != sat:
-    print('Failed to solve')
-    return time.time() - search_start_time, -1, [], False
   
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     timeoutS = search_start_time + 5*60 - time.time()
+    if timeoutS <= 0:
+      solved = False
+      print('Timeout already reached')
+      break
+    
     print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
     solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
     #routes = extract_routes(model,m,n,d_var,succ=succ)
     if curr_obj <= lower_bound:
+      solved = True
       break
     if time.time() - search_start_time >= 5*60:
       solved = False
@@ -241,6 +244,7 @@ def run_boolean_model(filename):
 
   if(curr_obj == -1):
     print("No solution found")
+    solved = False
     sol = []
   else:
     routes = extract_routes(model,m,n,pos)
@@ -352,20 +356,22 @@ def run_int_assign_model(filename):
   #--------------------------------- SEARCHING ---------------------------------
 
   curr_obj = -1
-  # Try to get intermediate results
-  if solver.check() != sat:
-    print('Failed to solve')
-    return time.time() - search_start_time, -1, [], False
   
   #For some instances the solver doesn't abort the searching process even after timeout
   while solver.check() == sat:
     timeoutS = search_start_time + 5*60 - time.time()
+    if timeoutS <= 0:
+      solved = False
+      print('Timeout already reached')
+      break
+    
     print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
     solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
     model = solver.model()
     curr_obj = model.evaluate(objective).as_long()
     #routes = extract_routes(model,m,n,d_var,succ=succ)
     if curr_obj <= lower_bound:
+      solved = True
       break
     if time.time() - search_start_time >= 5*60:
       solved = False
@@ -381,6 +387,7 @@ def run_int_assign_model(filename):
   #--------------------------------- BUILD_SOL ---------------------------------
   if(curr_obj == -1):
     print("No solution found")
+    solved = False
     sol = []
   else:
     routes = extract_routes(model,m,n,pos)
