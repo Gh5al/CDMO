@@ -12,6 +12,7 @@
 # %%
 from pyomo.environ import ConcreteModel, Set, Constraint, ConstraintList, Var, value, Objective, minimize, SolverFactory, Binary, PositiveIntegers
 from pyomo.contrib.appsi.solvers import Cbc, Highs
+from pyomo.contrib import appsi
 import time
 import math
 import re
@@ -36,7 +37,10 @@ def sol_to_dict(t:int, obj:str, sol:list):
     time = math.floor(t)
   elif obj == -1:
     optimal = False
-    time = math.floor(t)
+    if t >= 300:
+      time = 300
+    else:
+      time = math.floor(t)
   else:
     optimal = False
     time = 300
@@ -138,41 +142,104 @@ def build_model_from_data_file(file_path:str):
 # %%
 #GLPK SOLVER
 def solve_with_glpk(model:ConcreteModel):
-  start_time = time.time()
+#GLPK SOLVER
+  #solver_name = "GLPK"
   solver = SolverFactory('glpk')
   solver.options['tmlim'] = 300
-  results = solver.solve(model,tee=False)
+  start_time = time.time()
+  obj = -1
+  try:
+    results = solver.solve(model,tee=False)
+    obj = model.obj.value
+    if obj == None:
+      print("no solution found")
+      obj = -1
+    else:
+      print("Objective:", obj)
+  except Exception as e:
+      print(f"Solver failed: {e}")
+      obj = -1
   final_time = time.time() - start_time
-  print(results)
-  #print(final_time)
-  #print(model.obj.value)
-  return final_time
+  print(obj)
+  print(f"Time:{final_time}") 
+  return final_time, obj
 
 # %%
 #CBC SOLVER
 def solve_with_cbc(model:ConcreteModel):
-  start_time = time.time()
+  solver_name = "CBC"
   solver = Cbc()
   solver.config.time_limit = 300
-  results = solver.solve(model)
+  start_time = time.time()
+  solver.config.load_solution = False
+  obj = -1
+  try:
+    results = solver.solve(model)
+    #print(results)
+    if (results.termination_condition == appsi.base.TerminationCondition.optimal):
+        #load the solution
+        solver.load_vars()
+        obj = model.obj.value
+        print("Objective:", model.obj.value)
+    elif (results.termination_condition == appsi.base.TerminationCondition.maxTimeLimit):
+      print("Timeout reached")
+      if results.best_feasible_objective != None:
+        print(f"Find partial solution")
+        solver.load_vars()
+        obj  = model.obj.value
+        print("Objective:", model.obj.value)
+      else:
+        obj = -1
+    else:
+        print("No feasible solution.")
+        obj = -1
+  except Exception as e:
+      print(f"Solver failed: {e}")
+      obj = -1
   final_time = time.time() - start_time
-  print(results)
-  #print(final_time)
-  #print(model.obj.value)
-  return final_time
+  print(obj)
+  print(f"Time:{final_time}")
+  return final_time, obj
+
 
 # %%
 #HIGHS SOLVER
 def solve_with_highs(model:ConcreteModel):
-  start_time = time.time()
+  #HIGHS SOLVER
+  solver_name = "HiGHS"
   solver = Highs()
   solver.config.time_limit = 300
-  results = solver.solve(model)
+  start_time = time.time()
+  solver.config.load_solution = False
+  obj = -1
+  try:
+    results = solver.solve(model)
+    #print(results)
+    if (results.termination_condition == appsi.base.TerminationCondition.optimal):
+        #load the solution
+        solver.load_vars()
+        obj = model.obj.value
+        print("Objective:", model.obj.value)
+    elif (results.termination_condition == appsi.base.TerminationCondition.maxTimeLimit):
+      print("Timeout reached")
+      if results.best_feasible_objective != None:
+        print(f"Find partial solution")
+        solver.load_vars()
+        obj  = model.obj.value
+        print("Objective:", model.obj.value)
+      else:
+        obj = -1
+    else:
+        print("No feasible solution.")
+        obj = -1
+  except Exception as e:
+      print(f"Solver failed: {e}")
+      obj = -1
   final_time = time.time() - start_time
-  print(results)
-  #print(final_time)
-  #print(model.obj.value)
-  return final_time
+  print(obj)
+  print(f"Time:{final_time}")
+  return final_time, obj
+
 
 # %%
 def extract_solution(model:ConcreteModel, show_edges=False):
@@ -182,7 +249,7 @@ def extract_solution(model:ConcreteModel, show_edges=False):
     sub_sol = []
     for j in model.loc:
       #start the route from the depot and deliver the first item
-      if value(model.x[k,n,j]) > 0.5:
+      if (model.x[k,n,j].value) > 0.5:
         first = j
         sub_sol.append(first+1)
         break
@@ -190,14 +257,14 @@ def extract_solution(model:ConcreteModel, show_edges=False):
       if show_edges:
         for i in model.loc:
           for j in model.loc:
-            if value(model.x[k, i, j]) > 0.5:
+            if (model.x[k, i, j].value) > 0.5:
               print(f"travels from {i} to {j}")
     #route extraction(items delivered by the courier k following the delivery order)
     succ=0
     prec=first
     while(True):
       for i in model.loc:
-        if value(model.x[k,prec,i]>0.5):
+        if (model.x[k,prec,i].value>0.5):
           if i == n:
             succ=n
           prec=i
@@ -223,26 +290,36 @@ def save_to_file(out_dict: dict, file_path: str):
         json.dump(out_dict, f, indent=2)
     print(f"Results saved to {file_path}")
 
+def get_sol(model,obj):
+  if obj==-1:
+    sol = []
+  else:
+    sol = extract_solution(model)
+  return sol
+
 BASE_PATH = os.path.dirname(__file__)
 
 def run_mip_and_save(data_instance_number:int, result_file: str):
   dat_file = BASE_PATH + f"/../Instances/inst{'{:0>2}'.format(data_instance_number)}.dat"
   out = {}
 
+  print(f"\nRunning with GLPK solver:\n")
   model = build_model_from_data_file(dat_file)
-  time = solve_with_glpk(model)
-  sol = extract_solution(model)
-  out["glpk"] = sol_to_dict(time, model.obj.value, sol)
+  time, obj = solve_with_glpk(model)
+  sol = get_sol(model,obj)
+  out["glpk"] = sol_to_dict(time, obj, sol)
 
+  print(f"\nRunning with CBC solver:\n")
   model = build_model_from_data_file(dat_file)
-  time = solve_with_cbc(model)
-  sol = extract_solution(model)
-  out["cbc"] = sol_to_dict(time, model.obj.value, sol)
+  time, obj = solve_with_cbc(model)
+  sol = get_sol(model,obj)
+  out["cbc"] = sol_to_dict(time, obj, sol)
 
+  print(f"\nRunning with HIGHS solver:\n")
   model = build_model_from_data_file(dat_file)
-  time = solve_with_highs(model)
-  sol = extract_solution(model)
-  out["highs"] = sol_to_dict(time, model.obj.value, sol)
+  time, obj = solve_with_highs(model)
+  sol = get_sol(model,obj)
+  out["highs"] = sol_to_dict(time, obj, sol)
 
   save_to_file(out, result_file)
 

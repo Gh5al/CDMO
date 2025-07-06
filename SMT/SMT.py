@@ -42,7 +42,10 @@ def sol_to_dict(t:int, obj:str, sol:list):
     time = math.floor(t)
   elif obj == -1:
     optimal = False
-    time = math.floor(t)
+    if t >= 300:
+      time = 300
+    else:
+      time = math.floor(t)
   else:
     optimal = False
     time = 300
@@ -68,7 +71,7 @@ def extract_routes(model,m,n,d_var,succ=False):
   routes = []
   for k in couriers:
     routes.append([model.evaluate(d_var[k][i]).as_long() for i in iter])
-  print(routes)
+  #print(routes)
   return routes
 
 def extract_sol(routes,n,succ=False):
@@ -92,7 +95,7 @@ def extract_sol(routes,n,succ=False):
       sub_sol = []
       #count the number of items delivered by a courier
       count = sum([1 for p in x if p>0])
-      print(count)
+      #print(count)
       prev = 1
       while(prev != count + 1):
         for i in items:
@@ -100,7 +103,7 @@ def extract_sol(routes,n,succ=False):
             sub_sol.append(i+1)
             prev = prev+1
       sol.append(sub_sol)
-      print(sub_sol)
+      #print(sub_sol)
   return sol
 
 

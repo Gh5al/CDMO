@@ -1,0 +1,20 @@
+{
+  "glpk": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
+  "cbc": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
+  "highs": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  }
+}
