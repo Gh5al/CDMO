@@ -78,5 +78,11 @@
     "obj": 244,
     "time": 1,
     "optimal": true
+  },
+  "gecode_search": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
   }
 }
