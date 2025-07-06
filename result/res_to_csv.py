@@ -14,7 +14,8 @@ for technique in ["CP", "SMT", "MIP"]:
             instance_result = json.load(json_data)
             row_dict = {"instance":int(filename)}
             for variant in instance_result.keys():
-                row_dict[variant] = instance_result[variant]["obj"]
+                val = instance_result[variant]["obj"]
+                row_dict[variant] = val if val and val != -1 else "-"
                 #row[f'{variant}_optimal'] = instance_result[variant]["optimal"]
             row_df = pd.DataFrame([row_dict])
             print(row_df)

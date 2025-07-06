@@ -1,4 +1,16 @@
 {
+  "gecode": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
+  "chuffed": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
   "gecode_search": {
     "sol": [
       [
