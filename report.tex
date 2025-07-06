@@ -1,0 +1,285 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{hyperref}
+
+\title{CDMO: Multiple Couriers Problem}
+\author{
+Daniele Santini - daniele.santini2@studio.unibo.it\\
+Muhammad Saleem Ghulam - muhammad.ghulam@studio.unibo.it\\
+Master's Degree in Artificial Intelligence, University of Bologna\\
+}
+
+
+\date{}  % This removes the date
+\begin{document}
+
+\maketitle{}
+
+\section{Introduction}
+We approach the Multiple Courier Problem (MCP) using three different methods: Constraint Programming (CP), Satisfiability Modulo Theories (SMT) and Mixed Integer Programming (MIP). For each method, we explain how the decision variables are defined and what constraints are implemented. Next, we define the problem, the objective function, and its lower\_bound and upper\_bound.
+\subsection{Problem definition}
+The MCP consists of delivering n items using m couriers, where each courier has a maximum load capacity and each item has a specific size, so the total size of the items assigned to any courier must not exceed its capacity. All the couriers start their route from the depot, deliver the assigned items, and after the last delivery, they must return to the depot.
+The input instances includes information about the number of couriers, number of items, sizes of items, capacities of couriers and a distance matrix for every pair of locations, including the depot, which is used to compute the objective function.
+\subsection{Objective function}
+The objective is to minimize the maximum distance traveled by any courier. Defining lower and upper bounds for the objective function is crucial, especially the lower bound, as it reduces the search space and helps to find the solution faster. The bounds are computed as follows:
+\begin{itemize}
+    \item 
+\textit{lower\_bound} = $\max_{i \in items} \left( dist_{depot,i} + dist_{i,depot}\right)$, the maximum round-trip distance from depot to any item and back. 
+   \item 
+\textit{upper\_bound} = $\sum_{j=n-m+1}^{n}SD_j$, where \\ \textit{SD} = $\text{sorted} \left( \left( \text{dist}_{depot,i} + \text{dist}_{i,depot} \mid i \in \{1, \ldots, n\} \right) \right)$, as the upper\_bound we consider the worst case scenario in which $m-1$ items are delivered by $m-1$ couriers, and the last courier deliver $n-m+1$ items. Furthermore the items delivered by the last couriers are those with the largest round-trip distances.
+\end{itemize}
+
+\section{CP}
+The CP model is implemented using the MiniZinc language within the MiniZinc IDE. 
+\subsection{Decision Variables}
+We used the following variables:
+
+\begin{itemize}
+\item
+The method we adopt is called the successor approach[reference], and it consists of defining a matrix $succ \in {N^{m \times n+1}}$, where $succ[k, i] = j$ means that courier $k$ travels from location $i$ to location $j$, with $k \in {1, ..., m}$ and $i, j \in {1, ..., n+1}$. If $succ[k, i] = i$, it means that courier $k$ does not visit location $i$.
+\item 
+The variable $tot\_dist \in {N^{m}}$, is an auxiliary array of size m used to store the total distance traveled by each courier.
+\item 
+The variable $obj$ is an integer variable used to store the maximum distance traveled by any courier, which is then minimized.
+\end{itemize}
+
+\subsection{Constraints}
+The following constraints are implemented:
+\begin{itemize}
+\item
+$\sum_{k \in \text{1..m}} \left(succ_{k,i} \ne i \right) = 1 \: \forall i \in 1..n$, each item is delivered by exactly one courier
+\item 
+$\sum_{\substack{i \in 1..n \\ succ_{k,i} \ne i }} size_{i} \leq capacity_{k} \: \forall k \in 1..m$, each courier can't exceed its maximum load capacity
+\item
+$succ_{k,depot} \ne depot\:\forall k \in 1..m$, each courier should leave the depot. From this constraint is implied that each courier deliver at least one item.
+
+\item
+Each courier’s route must form an Hamiltonian tour, which starts and ends at the depot, and must avoid the formation of unconnected routes. To ensure this, the Minizinc global constraint \texttt{subcircuit} is applied to the \textit{succ} variable for each courier, leveraging the successor approach. 
+The constraint \texttt{subcircuit} covers other constraints, such as all couriers return to the depot and that each courier visits each delivery location at most once (i.e. no two locations can have the same successor).
+
+\item 
+$tot\_dist_k = \sum_{\substack{i \in 1..n+1 \\ succ_{k,i} \ne i}} dist_{i, \, succ_{k,i}}\:\forall k \in 1..m, \quad$, distance traveled by each courier
+\end{itemize}
+
+\subsection{Objective}
+The objective function is to minimize the maximum distance traveled by any courier, minimize $obj= max_{k \in 1..m}(tot\_dist_k)$. The objective function is constrained between \textit{lower\_bound} and \textit{upper\_bound}.
+
+\subsection{Experiment and results}
+We evaluate the solving capabilities of two CP models, one without any search strategy and another with a search strategy.We apply \textit{int\_search()} to the \textit{succ} variable, using the \textit{dom\_w\_deg} heuristic for variable selection and \textit{indomain\_median} for value selection, that chooses the median value from the domain instead of the minimum. Additionally, we use \textbf{Luby restart} strategy triggered after 70 failures, along with \textbf{Large Neighborhood Search (LNS)} with a $30\%$ relaxation, allowing for better exploration of the search space, especially in larger instances. Each model is run with two solvers: Gecode and Chuffed. A timeout
+condition is set to 300 seconds.
+
+\subsubsection{Results}
+
+The table \ref{table:cp-table} shows the results of all three variants evaluated on the 21 instances.
+
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+    \hline
+        Instance & gecode & chuffed & gecode (with LNS) \\ \hline
+        1 & 14 & 14 & 14 \\ \hline
+        2 & 226 & 226 & 226 \\ \hline
+        3 & 12 & 12 & 18 \\ \hline
+        4 & 220 & 220 & 220 \\ \hline
+        5 & 206 & 206 & 206 \\ \hline
+        6 & 322 & 322 & 322 \\ \hline
+        7 & 183 & 167 & 167 \\ \hline
+        8 & 186 & 186 & 186 \\ \hline
+        9 & 436 & 436 & 436 \\ \hline
+        10 & 244 & 244 & - \\ \hline
+        11 & 743 & - & 394 \\ \hline
+        12 & 481 & - & 346 \\ \hline
+        13 & - & - & 492 \\ \hline
+        14 & 1085 & - & 597 \\ \hline
+        15 & 1113 & - & 598 \\ \hline
+        16 & 308 & - & 286 \\ \hline
+        17 & 1510 & - & - \\ \hline
+        18 & 1016 & - & 503 \\ \hline
+        19 & 455 & - & 334 \\ \hline
+        20 & - & - & 925 \\ \hline
+        21 & 908 & - & 407 \\ \hline
+    \end{tabular}
+\label{table:cp-table}
+\caption{CP results}
+\end{table}
+
+\section{SMT}
+In this section, we use SMT models to solve MCP. SMT extends propositional logic (SAT) with additional theories such as arithmetic, arrays, and others, allowing the modeling of complex problems that involve both logical and numeric reasoning.
+For the MCP, we adopt a mixed approach by combining SAT with Linear Integer Arithmetic (LIA), using boolean variables for item assignment and integer variables to model route order and compute distances. 
+We implement two SMT models to solve the MCP:
+\begin{itemize}
+    \item 
+    Boolean Model: uses boolean variable to represent whether a courier delivers an item, combined with integer variables for delivery order and distances.
+    \item 
+    Integer Model: uses only integer variables to directly assign items to couriers and also for routing and distances.
+\end{itemize}
+\subsection{Boolean model}
+\subsubsection{Decision variables}
+\begin{itemize}
+    \item 
+    $A \in \{0,1\}^{m \times n}$, boolean matrix where $A_{k,i} = 1$ means that a courier k delivers item i(otherwise 0);
+    \item
+    $pos\in {N^{m \times n}}$, integer matrix representing the delivery position of an item in the courier's route;
+    \item 
+    $num\_assigned \in {N^{m}}$, integer array that stores the number of items assigned to each courier;  
+    \item
+    $distance \in {N^{m}}$, integer array that stores the distance traveled by each courier.
+    \item 
+    $objective \in {N}$, integer variable to store the maximum distance traveled by any courier.
+\end{itemize}
+\subsubsection{Constraints}
+\begin{itemize}
+    \item
+    $\sum_{k=1}^{m} A_{k,i} = 1 \: \forall i \in 1..n$, each item must be delivered by exactly one courier;
+    \item
+    $\{A_{k,1}\lor ... \lor A_{k,n}\} = True \: \forall k \in 1..m$, each courier must deliver at least one item;
+    \item
+    $\sum_{i=1}^{n} A_{k,i} \times size_{i} \leq capacity_{k} \: \forall k \in 1..m$, capacity constraint;
+    \item
+    $num\_assigned_{k}= \sum_{i=1}^{n}A_{k,i} \: \forall k \in 1..m$, counts the delivered items by the courier k, then these variables are used to constrain the upper\_bound of the $pos_{k}$ variable. 
+    \item
+    $A_{k,i} \implies 1<=pos_{k,i}<=num\_assigned_{k} \:\forall i \in 1..n, k \in 1..m $, if an item i is assigned to courier k, then the position of i in the route of k should be between a value between 1 and the total number of assigned items to k;
+    \item 
+    $\neg A_{k,i} \implies pos_{k,i}<0 \:\forall i \in 1..n, k \in 1..m $, if an item i is not in the route of courier k, then $pos_{k,i}$ should be negative;
+    \item 
+        $Distinct(\{pos_{k,i} | i \in 1..n\}) \: \forall k \in 1..m$, this constraint ensures that for each courier k two delivered items cannot occupy the same position in the courier's route. To exploit this constraint, the position values of undelivered items should be either negative or greater than the number of items assigned to that courier.
+    \item
+        The distance is computed using the $pos$ variable, since it contains the delivery route for each courier. It's composed of three parts: distance from depot to the first delivered item, sum of distances from the first to the last items and the distance from the last delivered item to the depot. \\
+    \\
+    $\forall k \in 1..m,$
+    \[depot\_first\_dist_{k} = \sum_{i=1}^{n}(A_{k,i} \land (pos_{k,i} = 1)) \times dist_{n,i}\]
+
+    \[between\_dist_{k} = \sum_{i=1}^{n} A_{k,i}\times \sum_{\begin{array}{c} {j=1} \\ j \ne i\end{array}}^{n} (A_{k,j}\land (pos_{k,j} = pos_{k,i} + 1)) \times dist_{i,j}\]
+    
+    \[last\_depot\_dist_{k} = \sum_{i=1}^{n}(A_{k,i} \land (pos_{k,i} = num\_assigned_k)) \times dist_{i,n}\]
+  
+    \[distance_k = depot\_first\_dist_{k}\ + between\_dist_{k} + last\_depot\_dist_{k}\]
+\end{itemize}
+\subsubsection{Objective}
+The objective function is to minimize the maximum distance traveled by any courier, minimize $obj \geq distance_k \quad \forall k \in 1..m$. The objective is constrained between \textit{lower\_bound} and \textit{upper\_bound}.
+
+\subsection{Integer model}
+This model differs from the previous one only in the item assignment decision variable, where the boolean matrix is replaced by an integer array of size n, where each element takes a value in the range 1..m. 
+\begin{itemize}
+    \item 
+    $assign \in N^{n}$, if $assign_i = k$ means that the item i is delivered by the courier k.
+    \item 
+    This variable already encodes that each item must be delivered by exactly one courier.
+    \item
+    All the other variables remain the same as in the previous model. The constraints are essentially the same, with the main difference being that we use the boolean expression $assign_i =k$ instead of directly accessing boolean matrix, to capture the same logic.
+    \item 
+    Also the distance computation and the objective function remain defined in the same way as the boolean model.
+\end{itemize}
+\subsection{Experiment and results}
+The SMT models were implemented using the Z3 solver in Python. A timeout condition of 300 seconds is passed to the library, though for complex instances sometimes the solver continues to run for a while even after the timeout is reached. To prevent this we configured the SIGALARM system signal to fire it after 300 seconds and handled it interrupting computation.
+The choice of using a second model was essentially to compare if there could be any searching improvement using a different type of decision variable.
+The choice to implement a second model was essentially to investigate whether using a different type of decision variable could lead to any improvements in the solution search.
+\subsubsection{Results}
+The table \ref{table:smt-table} shows the results of both models evaluated on the 21 instances.
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|l|l|l|}
+    \hline
+        Instance & Boolean & Integer \\ \hline
+        1 & 14 & 14 \\ \hline
+        2 & 226 & 226 \\ \hline
+        3 & 12 & 12 \\ \hline
+        4 & 220 & 220 \\ \hline
+        5 & 206 & 206 \\ \hline
+        6 & 322 & 322 \\ \hline
+        7 & 185 & 168 \\ \hline
+        8 & 186 & 186 \\ \hline
+        9 & 436 & 436 \\ \hline
+        10 & 244 & 244 \\ \hline
+        11 & - & - \\ \hline
+        12 & - & - \\ \hline
+        13 & 1924 & 1726 \\ \hline
+        14 & - & - \\ \hline
+        15 & - & - \\ \hline
+        16 & 965 & 1096 \\ \hline
+        17 & - & - \\ \hline
+        18 & - & - \\ \hline
+        19 & 1867 & - \\ \hline
+        20 & - & - \\ \hline
+        21 & - & - \\ \hline
+    \end{tabular}
+\label{table:smt-table}
+\caption{SMT results}
+\end{table}
+
+\section{MIP}
+In this section, we use the MIP approach to solve the MCP. The solution is inspired from this paper \cite{kaempfer2019learningmultipletravelingsalesmen}.
+
+\subsection{Decision variables}
+\begin{itemize}
+    \item 
+    $x \in \{0,1\}^{m \times (n+1) \times (n+1)}$, it's a 3-dimensional binary variable, if $x_{k,i,j} = 1$ means that a courier $k$ travels directly from location $i$ to location $j$, 0 otherwise. This variable keeps track of the movements of a courier through all the locations, including the depot;
+    \item
+    $o \in N^{m \times n}$, this variable is used to prevent the sub-tours using Miller-Tucker-Zemlin formulation\href{https://phabe.ch/2021/09/19/tsp-subtour-elimination-by-miller-tucker-zemlin-constraint/}{(MTZ)}. Specifically, if a $x_{k,i,j} = 1, \:i\ne j$, then the courier k travels from location i to location j, so enforcing $o_{k,j} = o_{k,i} + 1$, this ensures that the courier cannot travel back from j to i, preventing subtours and unconnected routes. It is important to note that the depot is not included in this variable because the couriers must start and return to depot;
+\item
+    $distance \in N^m$, array that stores the distance traveled by each courier;
+\item
+    $obj \in N$: integer variable to store the maximum distance traveled by any courier. 
+\end{itemize}
+\subsection{Constraints}
+\begin{itemize}
+    \item 
+    $\sum_{k=1}^{m} \sum_{\substack{i=1 \\ i \ne j}}^{n+1} x_{k,i,j} = 1 \quad \forall j \in 1..n$, ensures that each item j is delivered by exactly one courier k, and i refers to all the locations (including the depot);
+    \item
+    $\sum_{j=1}^{n} x_{k,depot,j} = 1 \quad \forall k \in 1..m$, ensures that each courier leaves the depot exactly once;
+    \item 
+    $\sum_{i=1}^{n} x_{k,i,depot} = 1 \quad \forall k \in 1..m$, ensures that each courier returns to depot exactly once;
+    \item 
+    $x_{k,i,i} = 0 \quad \forall k \in 1..m, \, \forall i \in 1..n+1$, ensures a courier k doesn't loop on the same node, it is not strictly necessary but it can help avoiding not necessary assignments.
+    \item 
+    $\sum_{i=1}^{n} \sum_{\substack{j=1 \\ i \ne j}}^{n+1} x_{k,i,j}\times size_{i} \leq capacity_{k} \quad \forall k \in 1..m$, each courier k can't load over the maximum capacity;
+    \item 
+    $\sum_{j=1}^{n+1} x_{k,i,j} = sum_{j=1}^{n+1} x_{k,j,i} \quad \forall k \in 1..m$, this is balanced\_flow constraint, which ensures that the number of times a courier exits the node i must be equal to the number of times the courier enters the node i;
+    \item 
+    $o_{k,j} - o_{k,i} \geq 1 - (1 - x_{k,i,j}) \times M \quad \forall k \in 1..m,\ \forall i, j \in 1..n,\ i \ne j$, this constraint prevents the formation of sub-tours. It's implemented in MIP using the Big-M notation, where M is a large number(we set $M=2\times n$). The idea is that when $x_{kij}=1$, the courier k travels from location i to location j, then the constraint $o_{k,j} - o_{k,j} \geq 1$ ensures the formation of a connected and a valid tour. Otherwise the constraint is relaxed due to the large value of M. 
+    \item 
+    $distance_k = \sum_{i=1}^{n+1}\sum_{\substack{j=1 \\ j \ne i}}^{n+1}x_{kij}\times dist_{ij} \quad \forall k\in 1..m$, stores the distance traveled by each courier k.
+\end{itemize}
+\subsection{Objective}
+The objective function is to minimize the maximum distance traveled by any courier, minimize $obj \geq distance_k \quad \forall k \in 1..m$. The objective is constrained between lower bound and upper bound.
+\subsection{Experiment and results}
+We used the Pyomo optimization framework in Python to implement the model with the variables and constraints defined above. Pyomo is a solver-independent modeling language, that allows to solve the model with different solvers without changing the model. We evaluated the model for GLPK solver, CBC solver and Highs solver. For all the solvers, the timeout is fixed to 300 seconds.
+
+\subsubsection{Results}
+The table \ref{table:mip-table} shows the results of all three solvers evaluated on the 21 instances.
+
+\begin{table}[!ht]
+    \centering
+    \begin{tabular}{|l|l|l|l|}
+    \hline
+        Instance & GLPK & CBC & HiGHS  \\ \hline
+        1 & 14 & 14 & 14 \\ \hline
+        2 & 226 & 226 & 226 \\ \hline
+        3 & 12 & 12 & 12 \\ \hline
+        4 & 220 & 220 & 220 \\ \hline
+        5 & 206 & 206 & 206 \\ \hline
+        6 & 322 & 322 & 322 \\ \hline
+        7 & 234 & - & 167 \\ \hline
+        8 & 186 & 186 & 186 \\ \hline
+        9 & 436 & 436 & 436 \\ \hline
+        10 & 244 & 244 & 244 \\ \hline
+        11 & - & - & - \\ \hline
+        12 & - & - & - \\ \hline
+        13 & - & - & 646 \\ \hline
+        14 & - & - & - \\ \hline
+        15 & - & - & - \\ \hline
+        16 & - & - & 362 \\ \hline
+        17 & - & - & - \\ \hline
+        18 & - & - & - \\ \hline
+        19 & - & - & - \\ \hline
+        20 & - & - & - \\ \hline
+        21 & - & - & - \\ \hline
+    \end{tabular}
+\label{table:mip-table}
+\caption{MIP results}
+\end{table}
+
+\bibliographystyle{plain}
+\bibliography{ref}
+\end{document}
