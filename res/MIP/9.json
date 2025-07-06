@@ -80,7 +80,7 @@
     ]
   },
   "highs": {
-    "time": 0,
+    "time": 1,
     "optimal": true,
     "obj": 436,
     "sol": [
