@@ -20,6 +20,7 @@ import json
 import os
 import math
 import re
+import signal
 
 
 # %%
@@ -104,10 +105,86 @@ def extract_sol(routes,n,succ=False):
       #print(sub_sol)
   return sol
 
+def search_solution(solver:Solver, objective:Int, m:int, n:int, lower_bound:int, pos:list):
+  print("Searching solution...")
+  search_start_time = time.time()
+
+  #--------------------------------- SEARCHING ---------------------------------
+  curr_obj = -1
+  
+  #For some instances the solver doesn't abort the searching process even after timeout
+  signal.alarm(5*60 + 1)
+  while True:
+    timeoutS = search_start_time + 5*60 - time.time()
+    if timeoutS <= 0:
+      solved = False
+      print('Timeout already reached')
+      break
+    
+    solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
+    try:
+      if solver.check() != sat:
+        print("No more solutions available")
+        break
+    except Exception as e:
+      print("Search failed", e)
+      solved = False
+      break
+    
+    model = solver.model()
+    curr_obj = model.evaluate(objective).as_long()
+    print("Current objective:", curr_obj, "; remaining seconds:", timeoutS)
+    #routes = extract_routes(model,m,n,d_var,succ=succ)
+    if curr_obj <= lower_bound:
+      solved = True
+      break
+    if time.time() - search_start_time >= 5*60:
+      solved = False
+      print('Timeout reached')
+      break
+    if solver.check() != sat:
+      solved = False
+      print('Failed to solve')
+      break
+    solved = True
+    #try to improve the objective adding an upperbound with the current objective
+    solver.add(objective < curr_obj)
+  #--------------------------------- BUILD_SOL ---------------------------------
+
+  if(curr_obj == -1):
+    print("No solution found")
+    solved = False
+    sol = []
+  else:
+    print("Using curr_obj for solution:", curr_obj)
+    routes = extract_routes(model,m,n,pos)
+    #extract the items assigned to each courier
+    sol = extract_sol(routes,n)
+  #run the searching using the Process and Queue library to abort execution after reaching timeout
+  #in this approach the routes are extracted from position variable
+  #info = run_with_timeout(m,n,solver, pos, objective,lower_bound, timeout)
+  #print(info)
+  signal.alarm(0)
+
+  print(f"\n\nFinal objective: {curr_obj}")
+  searching_time = time.time() - search_start_time
+  final_time = searching_time
+  print(f"Finished in: {final_time:3.2f} secs\n")
+  return final_time,curr_obj, sol, solved
+
+def throw_exception_on_sigtimer(signum, frame):
+  """
+  https://stackoverflow.com/questions/492519/timeout-on-a-function-call
+  https://docs.python.org/3/library/signal.html#signal.alarm
+  """
+  raise Exception("Forcefully interrupting the research after 5 minutes")
+
+
 
 # %% [markdown]
 # ## BOOLEAN VARIABLE + POSITION VARIABLE
 
+# %%
 #bool var + pos var
 def run_boolean_model(filename):
 
@@ -208,58 +285,8 @@ def run_boolean_model(filename):
 
   encoding_time = time.time() - start_time
   print(f"encoding_time: {encoding_time:3.2f} secs\n")
-  search_start_time = time.time()
 
-  #--------------------------------- SEARCHING ---------------------------------
-  curr_obj = -1
-  
-  #For some instances the solver doesn't abort the searching process even after timeout
-  while solver.check() == sat:
-    timeoutS = search_start_time + 5*60 - time.time()
-    if timeoutS <= 0:
-      solved = False
-      print('Timeout already reached')
-      break
-    
-    print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
-    solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
-    model = solver.model()
-    curr_obj = model.evaluate(objective).as_long()
-    #routes = extract_routes(model,m,n,d_var,succ=succ)
-    if curr_obj <= lower_bound:
-      solved = True
-      break
-    if time.time() - search_start_time >= 5*60:
-      solved = False
-      print('Timeout reached')
-      break
-    if solver.check() != sat:
-      solved = False
-      print('Failed to solve')
-      break
-    solved = True
-    #try to improve the objective adding an upperbound with the current objective
-    solver.add(objective < curr_obj)
-  #--------------------------------- BUILD_SOL ---------------------------------
-
-  if(curr_obj == -1):
-    print("No solution found")
-    solved = False
-    sol = []
-  else:
-    routes = extract_routes(model,m,n,pos)
-    #extract the items assigned to each courier
-    sol = extract_sol(routes,n)
-  #run the searching using the Process and Queue library to abort execution after reaching timeout
-  #in this approach the routes are extracted from position variable
-  #info = run_with_timeout(m,n,solver, pos, objective,lower_bound, timeout)
-  #print(info)
-
-  print(f"\n\nFinal objective: {curr_obj}")
-  searching_time = time.time() - search_start_time
-  final_time = searching_time
-  print(f"Finished in: {final_time:3.2f} secs\n")
-  return final_time,curr_obj, sol, solved
+  return search_solution(solver, objective, m, n, lower_bound, pos)
 
 
 # %% [markdown]
@@ -351,58 +378,8 @@ def run_int_assign_model(filename):
 
   encoding_time = time.time() - start_time
   print(f"encoding_time: {encoding_time:3.2f} secs\n")
-  search_start_time = time.time()
-
-  #--------------------------------- SEARCHING ---------------------------------
-
-  curr_obj = -1
   
-  #For some instances the solver doesn't abort the searching process even after timeout
-  while solver.check() == sat:
-    timeoutS = search_start_time + 5*60 - time.time()
-    if timeoutS <= 0:
-      solved = False
-      print('Timeout already reached')
-      break
-    
-    print("Current obj:", curr_obj, "; remaining seconds:", timeoutS)
-    solver.set(timeout=int(timeoutS*1000)) # https://microsoft.github.io/z3guide/programming/Parameters/#global-parameters
-    model = solver.model()
-    curr_obj = model.evaluate(objective).as_long()
-    #routes = extract_routes(model,m,n,d_var,succ=succ)
-    if curr_obj <= lower_bound:
-      solved = True
-      break
-    if time.time() - search_start_time >= 5*60:
-      solved = False
-      print('Timeout reached')
-      break
-    if solver.check() != sat:
-      solved = False
-      print('Failed to solve')
-      break
-    solved = True
-    #try to improve the objective adding an upperbound with the current objective
-    solver.add(objective < curr_obj)
-  #--------------------------------- BUILD_SOL ---------------------------------
-  if(curr_obj == -1):
-    print("No solution found")
-    solved = False
-    sol = []
-  else:
-    routes = extract_routes(model,m,n,pos)
-    #extract the items assigned to each courier
-    sol = extract_sol(routes,n)
-  #run the searching using the Process and Queue library to abort execution after reaching timeout
-  #in this approach the routes are extracted from position variable
-  #info = run_with_timeout(m,n,solver, pos, objective,lower_bound, timeout)
-  #print(info)
-
-  print(f"\n\nFinal objective: {curr_obj}")
-  searching_time = time.time() - search_start_time
-  final_time = searching_time
-  print(f"Finished in: {final_time:3.2f} secs\n")
-  return final_time,curr_obj, sol, solved
+  return search_solution(solver, objective, m, n, lower_bound, pos)
 
 # %% [markdown]
 # # RUN MODEL
@@ -424,6 +401,8 @@ BASE_PATH = os.path.dirname(__file__)
 def run_smt_and_save(data_instance_number:int, result_file: str):
   dat_file = BASE_PATH + f"/../Instances/inst{'{:0>2}'.format(data_instance_number)}.dat"
   out = {}
+
+  signal.signal(signal.SIGALRM, throw_exception_on_sigtimer)
 
   print("Running boolean variable model...")
   t, obj, sol, solved = run_boolean_model(dat_file)

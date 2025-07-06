@@ -1,0 +1,14 @@
+{
+  "boolean": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  },
+  "assign_int": {
+    "time": 300,
+    "optimal": false,
+    "obj": -1,
+    "sol": []
+  }
+}
